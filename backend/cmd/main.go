@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"log"
+	"net/http"
 	"strconv"
 
 	"github.com/gin-contrib/cors"
@@ -41,6 +42,27 @@ func main() {
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
 	}))
+
+	r.GET("/chat", func(c *gin.Context) {
+		rows, err := db.Query("SELECT chat_id FROM chat_history GROUP BY chat_id")
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "error": err.Error()})
+			return
+		}
+		defer rows.Close()
+
+		var chatIDs []int
+		for rows.Next() {
+			var id int
+			if err := rows.Scan(&id); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "error": err.Error()})
+				return
+			}
+			chatIDs = append(chatIDs, id)
+		}
+
+		c.JSON(http.StatusOK, gin.H{"status": "success", "chatIDs": chatIDs})
+	})
 
 	r.GET("/chat/:chatID", func(c *gin.Context) {
 		chatID := c.Param("chatID")
