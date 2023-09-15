@@ -55,13 +55,27 @@ function Chat() {
     const [inputValue, setInputValue] = useState('');
     const [currentUser, setCurrentUser] = useState('You');
 
+    const chatID = 111
+
     const handleSend = () => {
         if (inputValue.trim()) {
-            setMessages([...messages, { text: inputValue, sender: currentUser }]);
-            setInputValue('');
-            setCurrentUser((prevUser) => (prevUser === 'You' ? 'Friend' : 'You'));
+            fetch(`http://localhost:8080/chat/${chatID}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ message: inputValue }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                setMessages([...messages, { text: data.text, sender: currentUser }]);
+                setInputValue('');
+                setCurrentUser(prevUser => (prevUser === 'You' ? 'Friend' : 'You'));
+            })
+            .catch(error => console.error('Error:', error));
         }
     };
+    
 
     const handleKeyPress = (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {

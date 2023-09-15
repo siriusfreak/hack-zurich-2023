@@ -5,8 +5,11 @@ import (
 	"log"
 	"strconv"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	_ "github.com/mattn/go-sqlite3"
+
+	"github.com/siriusfreak/hack-zurich-2023/backend/internal/pallm"
 )
 
 type ChatMessage struct {
@@ -29,6 +32,14 @@ func main() {
 	}
 
 	r := gin.Default()
+
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"*"},
+		AllowMethods:     []string{"POST", "GET", "OPTIONS", "PUT", "DELETE"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Content-Length", "Accept-Encoding", "X-CSRF-Token", "Authorization"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+	}))
 
 	r.GET("/chat/:chatID", func(c *gin.Context) {
 		chatID := c.Param("chatID")
@@ -61,17 +72,31 @@ func main() {
 		msg.ChatID, err = strconv.Atoi(chatID)
 		if err != nil {
 			c.JSON(200, gin.H{"status": err})
+			return
 		}
+
+		resp, err := pallm.MakeRequest(msg.Message, pallm.RequestParameters{
+			MaxOutputTokens: 2000,
+			TopK:            20,
+			TopP:            0.9,
+		})
+
+		if err != nil {
+			c.JSON(200, gin.H{"status": err})
+			return
+		}
+
 		_, err = db.Exec("INSERT INTO chat_history (chat_id, message, is_bot) VALUES (?, ?, ?)", chatID, msg.Message, msg.IsBot)
 		if err != nil {
 			log.Fatal(err)
 		}
-		_, err = db.Exec("INSERT INTO chat_history (chat_id, message, is_bot) VALUES (?, ?, ?)", chatID, "accepted", true)
+
+		_, err = db.Exec("INSERT INTO chat_history (chat_id, message, is_bot) VALUES (?, ?, ?)", chatID, resp.Predictions[0].Content, true)
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		c.JSON(200, gin.H{"status": "message added"})
+		c.JSON(200, gin.H{"status": "message added", "response": resp.Predictions[0].Content})
 	})
 
 	r.Run()
