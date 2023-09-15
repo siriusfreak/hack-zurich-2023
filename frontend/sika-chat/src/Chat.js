@@ -4,7 +4,7 @@ import SendIcon from '@mui/icons-material/Send';
 
 const styles = {
     chatContainer: {
-      padding: '20px',
+      padding: '50px',
       border: '1px solid #ccc',
       borderRadius: '10px',
       background: '#ffffff', // 1. Установите белый фон для чата
@@ -12,6 +12,8 @@ const styles = {
       display: 'flex',
       flexDirection: 'column',
       justifyContent: 'space-between',
+      margin: '0 auto',
+      maxWidth: '800px',
     },
     messageBubble: (isOwnMessage) => ({
       alignSelf: isOwnMessage ? 'flex-end' : 'flex-start',
@@ -19,7 +21,7 @@ const styles = {
       padding: '10px 20px',
       borderRadius: '20px',
       margin: '10px',
-      backgroundColor: isOwnMessage ? '#f0f0f0' : '#ffeb57', // 2 и 3. Обновите цвета фона для пузырей сообщений
+      backgroundColor: '#f5f5f5',
     }), 
     inputContainer: {
       display: 'flex',
@@ -59,6 +61,10 @@ function Chat() {
 
     const handleSend = () => {
         if (inputValue.trim()) {
+            const newMessage = { text: inputValue, sender: currentUser };
+            setMessages((prevMessages) => [...prevMessages, newMessage]);
+            setInputValue('');
+            
             fetch(`http://localhost:8080/chat/${chatID}`, {
                 method: 'POST',
                 headers: {
@@ -68,14 +74,13 @@ function Chat() {
             })
             .then(response => response.json())
             .then(data => {
-                setMessages([...messages, { text: data.text, sender: currentUser }]);
-                setInputValue('');
-                setCurrentUser(prevUser => (prevUser === 'You' ? 'Friend' : 'You'));
+                setMessages((prevMessages) => [...prevMessages, { text: data.response, sender: currentUser === 'You' ? 'Friend' : 'You' }]);
             })
             .catch(error => console.error('Error:', error));
+            
+            setCurrentUser((prevUser) => (prevUser === 'You' ? 'Friend' : 'You'));
         }
     };
-    
 
     const handleKeyPress = (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
