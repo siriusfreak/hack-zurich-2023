@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Container, TextField, Button, List, ListItem, ListItemText, Divider, MenuItem, Menu, IconButton, Box } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import sikaLogo from './assets/LogoSika.png';
@@ -157,7 +157,7 @@ function Chat() {
   const [currentUser, setCurrentUser] = useState('You');
   const [selectedLanguage, setSelectedLanguage] = useState('english');
   const [languageAnchorEl, setLanguageAnchorEl] = useState(null);
-  const [isNewChat, setIsNewChat] = useState(false);
+  const [, setIsNewChat] = useState(false);
 
   const [chatList, setChatList] = useState(() => {
     const savedChatList = localStorage.getItem('chatList');
@@ -269,6 +269,16 @@ function Chat() {
   
     fetchChats();
   }, []);
+
+  const messagesEndRef = useRef(null);
+
+    const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    };
+
+    useEffect(() => {
+    scrollToBottom();
+    }, [messages]);
   
   return (
     <Container sx={styles.chatLayout}>
@@ -347,6 +357,7 @@ function Chat() {
                 <ListItemText primary={message.sender} secondary={message.text} />
             </ListItem>
         ))}
+        <div ref={messagesEndRef} />
       </List>
 
       <Divider />
