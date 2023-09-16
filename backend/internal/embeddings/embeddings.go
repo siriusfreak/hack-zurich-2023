@@ -69,6 +69,7 @@ func MakePredictionRequest(projectID string, request PredictRequest) (*PredictRe
 		if err != nil {
 			return nil, err
 		}
+		fmt.Println(string(body))
 		return nil, fmt.Errorf("status code %d: %s", resp.StatusCode, string(body))
 	}
 
