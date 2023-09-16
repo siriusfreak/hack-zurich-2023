@@ -2,11 +2,6 @@ package main
 
 import (
 	"fmt"
-	"github.com/siriusfreak/hack-zurich-2023/backend/internal/chatgpt"
-	"github.com/siriusfreak/hack-zurich-2023/backend/internal/db"
-	"github.com/siriusfreak/hack-zurich-2023/backend/internal/elastic"
-	"github.com/siriusfreak/hack-zurich-2023/backend/internal/embeddings"
-	"github.com/siriusfreak/hack-zurich-2023/backend/internal/templater"
 	"log"
 	"net/http"
 	"strconv"
@@ -15,6 +10,12 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	_ "github.com/mattn/go-sqlite3"
+
+	"github.com/siriusfreak/hack-zurich-2023/backend/internal/chatgpt"
+	"github.com/siriusfreak/hack-zurich-2023/backend/internal/db"
+	"github.com/siriusfreak/hack-zurich-2023/backend/internal/elastic"
+	"github.com/siriusfreak/hack-zurich-2023/backend/internal/embeddings"
+	"github.com/siriusfreak/hack-zurich-2023/backend/internal/templater"
 )
 
 func getChats(c *gin.Context) {
@@ -42,6 +43,44 @@ func getChatById(c *gin.Context) {
 	c.JSON(200, messages)
 }
 
+func getRelatedDocuments(message string) ([]templater.Document, error) {
+	embed, err := embeddings.MakePredictionRequest("hackzurich23-8200",
+		embeddings.PredictRequest{
+			Instances: []embeddings.Instance{
+				{
+					Text: message,
+				},
+			},
+		})
+
+	if err != nil {
+		return nil, err
+	}
+
+	request := elastic.SearchRequest{}
+	request.KNN.Field = "embedding"
+	request.KNN.QueryVector = embed.Predictions[0].TextEmbedding
+	request.KNN.K = 10
+	request.KNN.NumCandidates = 10
+	request.Size = 3
+
+	searchResp, err := elastic.Search("sika_chat_index", request)
+	if err != nil {
+		return nil, err
+	}
+
+	documents := make([]templater.Document, 0, len(searchResp.Hits.Hits))
+	for _, hit := range searchResp.Hits.Hits {
+		documents = append(documents, templater.Document{
+			Url:     hit.Source.Links[0],
+			Offset:  hit.Source.Offset,
+			Content: hit.Source.Content,
+		})
+	}
+
+	return documents, nil
+}
+
 func postToExistingChat(c *gin.Context, tmpl *templater.Templater, msg db.ChatMessage, messages []db.ChatMessage) {
 	allMessages := make([]chatgpt.Message, 0, len(messages)+1)
 	for _, m := range messages {
@@ -60,7 +99,12 @@ func postToExistingChat(c *gin.Context, tmpl *templater.Templater, msg db.ChatMe
 		})
 	}
 
-	userMessage, err := tmpl.ProcessTemplateAllQuestionsData(msg.Message, msg.Language)
+	documents, err := getRelatedDocuments(msg.Message)
+	if err != nil {
+		c.JSON(500, gin.H{"status": err})
+		return
+	}
+	userMessage, err := tmpl.ProcessTemplateAllQuestionsData(msg.Message, msg.Language, documents)
 	allMessages = append(allMessages, chatgpt.Message{
 		Role:    "user",
 		Content: userMessage,
@@ -92,40 +136,10 @@ func postToExistingChat(c *gin.Context, tmpl *templater.Templater, msg db.ChatMe
 }
 
 func postToNewChat(c *gin.Context, msg db.ChatMessage, tmpl *templater.Templater) {
-	embed, err := embeddings.MakePredictionRequest("hackzurich23-8200",
-		embeddings.PredictRequest{
-			Instances: []embeddings.Instance{
-				{
-					Text: msg.Message,
-				},
-			},
-		})
-
+	documents, err := getRelatedDocuments(msg.Message)
 	if err != nil {
 		c.JSON(500, gin.H{"status": err})
 		return
-	}
-
-	request := elastic.SearchRequest{}
-	request.KNN.Field = "embedding"
-	request.KNN.QueryVector = embed.Predictions[0].TextEmbedding
-	request.KNN.K = 10
-	request.KNN.NumCandidates = 10
-	request.Size = 10
-
-	searchResp, err := elastic.Search("sika_chat_index", request)
-
-	documents := make([]templater.Document, 0, len(searchResp.Hits.Hits))
-	for _, hit := range searchResp.Hits.Hits {
-		documents = append(documents, templater.Document{
-			Url:     hit.Source.Links[0],
-			Offset:  hit.Source.Offset,
-			Content: hit.Source.Content,
-		})
-	}
-
-	if err != nil {
-		c.JSON(500, gin.H{"status": err})
 	}
 
 	template, err := tmpl.ProcessTemplateInitQuestionData([]templater.InitQuestionData{
@@ -282,7 +296,7 @@ func main() {
 
 	r := gin.Default()
 
-	tmpl, err := templater.New("backend/config/templates.yaml")
+	tmpl, err := templater.New("config/templates.yaml")
 	if err != nil {
 		log.Fatal(err)
 	}

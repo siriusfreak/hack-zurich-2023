@@ -68,18 +68,20 @@ func (t *Templater) ProcessTemplateInitQuestionData(data []InitQuestionData) (st
 }
 
 func (t *Templater) ProcessTemplateAllQuestionsData(question string,
-	language string) (string, error) {
+	language string, documents []Document) (string, error) {
 	tmpl, err := template.New("questionTemplate").Parse(t.AllQuestions)
 	if err != nil {
 		return "", err
 	}
 
 	data := struct {
-		Question string
-		Language string
+		Question  string
+		Language  string
+		Documents []Document
 	}{
-		Question: question,
-		Language: language,
+		Question:  question,
+		Language:  language,
+		Documents: documents,
 	}
 
 	var output bytes.Buffer

@@ -26,6 +26,15 @@ initQuestion: |
 allQuestions: |
   You must make answer to my next request:  {{.Question}}
   You must answer in {{.Language}} language.
+  
+  You must include the URL of the documents and links that you use to this answer.
+  Documents:
+  {{- range .Documents}}
+  <Start document with URL: {{.Url}}>
+  {{.Content}}
+  <End document with URL: {{.Url}}>
+  {{- end}}
+  
     I could find information about stock count and stores
     on our website here: https://mys.sika.com/en/home-improvement/where-to-buy.html
     I could request quotation here: https://mys.sika.com/en/Contact.html
