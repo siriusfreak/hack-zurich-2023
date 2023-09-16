@@ -1,14 +1,15 @@
-import React, { useState } from 'react';
-import { Container, TextField, Button, List, ListItem, ListItemText, Divider, MenuItem, Menu, IconButton } from '@mui/material';
+import React, { useState, useEffect } from 'react';
+import { Container, TextField, Button, List, ListItem, ListItemText, Divider, MenuItem, Menu, IconButton, Box } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import sikaLogo from './assets/LogoSika.png';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import Flag from 'react-country-flag';
+import AddIcon from '@mui/icons-material/Add';
+import Fab from '@mui/material/Fab';
 
 const styles = {
   chatContainer: {
     padding: '50px',
-    border: '1px solid #ccc',
     borderRadius: '10px',
     background: '#ffffff',
     height: '100vh',
@@ -21,7 +22,7 @@ const styles = {
   chatHeader: {
     backgroundColor: '#ffffff',
     borderBottom: '1px solid #ccc',
-    padding: '10px',
+    padding: '20px 0 0 0',
     fontSize: '20px',
     fontWeight: 'bold',
     display: 'flex',
@@ -49,7 +50,7 @@ const styles = {
   }),
   inputContainer: {
     display: 'flex',
-    padding: '10px',
+    padding: '20px',
     backgroundColor: '#f0f0f0',
     borderRadius: '10px',
     position: 'relative',
@@ -59,6 +60,7 @@ const styles = {
     borderRadius: '10px',
     overflow: 'hidden',
     marginRight: '10px',
+    padding: '10px 20px 20px 0',
   },
   sendButton: {
     position: 'absolute',
@@ -77,6 +79,75 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
   },
+
+  chatLayout: {
+    backgroundColor: '#ffffff',
+    borderBottom: '1px solid #ccc',
+    display: 'flex',
+    height: '100vh',
+    borderRadius: '10px',
+
+  },
+  chatListContainer: {
+    width: '300px',
+    backgroundColor: '#f5f5f5',
+    height: '100%',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    padding: '20px 0 0 0',
+    boxSizing: 'border-box',
+  },
+  chatListHeader: {
+    width: '100%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    boxSizing: 'border-box',
+    padding: '0 0 20px 0',
+  },
+  newChatButton: {
+    backgroundColor: 'red',
+    borderRadius: '50%',
+    width: '40px',
+    height: '40px',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    color: 'white',
+    fontSize: '20px',
+    cursor: 'pointer',
+    padding: 0,
+  },
+  chatList: {
+    width: '100%',
+    background: '#f5f5f5',
+    overflow: 'auto',
+    maxHeight: 'calc(100vh - 120px)',
+    color: 'white',
+    backgroundColor: '#616161',
+  },
+  chatWindow: {
+    flexGrow: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    background: '#ffffff',
+    borderRadius: '10px',
+    overflow: 'hidden',
+  },
+  activeChatItem: {
+    backgroundColor: 'red',
+    borderRadius: '10px',
+    '&:hover': {
+      backgroundColor: 'red',
+    },
+  },
+   unactiveChatItem: {
+    borderRadius: '10px',
+    '&:hover': {
+      backgroundColor: '#8c8c8c',
+    },
+  },
 };
 
 function Chat() {
@@ -86,7 +157,26 @@ function Chat() {
   const [selectedLanguage, setSelectedLanguage] = useState('english');
   const [languageAnchorEl, setLanguageAnchorEl] = useState(null);
 
-  const chatID = 111;
+  const [chatList, setChatList] = useState(() => {
+    const savedChatList = localStorage.getItem('chatList');
+    return savedChatList ? JSON.parse(savedChatList) : [
+      { id: 1, name: 'Chat 1' },
+    ];
+  });
+  const [activeChatId, setActiveChatId] = useState(null);
+
+  useEffect(() => {
+    const storedChatList = JSON.parse(localStorage.getItem('chatList'));
+    if (storedChatList) {
+      setChatList(storedChatList);
+    } else {
+      const initialChatList = [
+        { id: 1, name: 'Chat 1' },
+      ];
+      setChatList(initialChatList);
+      localStorage.setItem('chatList', JSON.stringify(initialChatList));
+    }
+  }, []);
 
   const handleSend = () => {
     if (inputValue.trim()) {
@@ -94,7 +184,7 @@ function Chat() {
       setMessages((prevMessages) => [...prevMessages, newMessage]);
       setInputValue('');
 
-      fetch(`http://localhost:8080/chat/${chatID}`, {
+      fetch(`http://localhost:8080/chat/${activeChatId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -134,14 +224,42 @@ function Chat() {
     setLanguageAnchorEl(null);
   };
 
-  return (
-    <Container sx={styles.chatContainer}>
-      <div sx={styles.chatHeader}>
-        <div style={{ display: 'flex', alignItems: 'center' }}> 
-            <img src={sikaLogo} alt="Sika Logo" style={styles.sikaLogoImage} />
-        </div>
+  const handleNewChat = () => {
+    const newChatId = Math.floor(Math.random() * 1000000);
+    const newChat = { id: newChatId, name: `Chat ${chatList.length + 1}` };
 
-        <div style={{ display: 'flex', alignItems: 'center' }}>
+    setChatList((prevChatList) => {
+        const updatedChatList = [...prevChatList, newChat];
+        localStorage.setItem('chatList', JSON.stringify(updatedChatList));
+        return updatedChatList;
+      });
+  };
+
+  return (
+    <Container sx={styles.chatLayout}>
+        <Box sx={styles.chatListContainer}>
+            <Container sx={styles.chatListHeader}>
+                <img src={sikaLogo} alt="Sika Logo" style={styles.sikaLogoImage} />
+                <Fab sx={styles.newChatButton} onClick={handleNewChat}>
+                    <AddIcon />
+                </Fab>
+            </Container>
+
+            <List sx={styles.chatList}>
+            {chatList.map((chat) => (
+                <ListItem button key={chat.id} 
+                onClick={() => setActiveChatId(chat.id)}
+                sx={activeChatId === chat.id ? styles.activeChatItem : styles.unactiveChatItem}>
+                    <ListItemText primary={chat.name} />
+                    <Divider />
+                </ListItem>
+            ))}
+            </List>
+        </Box>
+
+        <Container sx={styles.chatWindow}>
+
+        <div>
         <IconButton
             aria-controls="language-menu"
             aria-haspopup="true"
@@ -158,31 +276,31 @@ function Chat() {
           open={Boolean(languageAnchorEl)}
           onClose={handleLanguageClose}
         >
-          <MenuItem onClick={() => handleLanguageChange('english')}>
-            <Flag countryCode="GB" style={{ marginRight: '8px' }} />
-            English
-          </MenuItem>
-          <MenuItem onClick={() => handleLanguageChange('german')}>
-            <Flag countryCode="DE" style={{ marginRight: '8px' }} />
-            German
-          </MenuItem>
-          <MenuItem onClick={() => handleLanguageChange('portuguese')}>
-            <Flag countryCode="PT" style={{ marginRight: '8px' }} />
-            Portuguese
-          </MenuItem>
-          <MenuItem onClick={() => handleLanguageChange('spanish')}>
-            <Flag countryCode="ES" style={{ marginRight: '8px' }} />
-            Spanish
-          </MenuItem>
-          <MenuItem onClick={() => handleLanguageChange('chinese')}>
-            <Flag countryCode="CN" style={{ marginRight: '8px' }} />
-            Chinese
-          </MenuItem>
+            <MenuItem onClick={() => handleLanguageChange('english')}>
+                <Flag countryCode="GB" style={{ marginRight: '8px' }} />
+                English
+            </MenuItem>
+            <MenuItem onClick={() => handleLanguageChange('german')}>
+                <Flag countryCode="DE" style={{ marginRight: '8px' }} />
+                German
+            </MenuItem>
+            <MenuItem onClick={() => handleLanguageChange('portuguese')}>
+                <Flag countryCode="PT" style={{ marginRight: '8px' }} />
+                Portuguese
+            </MenuItem>
+            <MenuItem onClick={() => handleLanguageChange('spanish')}>
+                <Flag countryCode="ES" style={{ marginRight: '8px' }} />
+                Spanish
+            </MenuItem>
+            <MenuItem onClick={() => handleLanguageChange('chinese')}>
+                <Flag countryCode="CN" style={{ marginRight: '8px' }} />
+                Chinese
+            </MenuItem>
         </Menu>
         </div>
-      </div>
 
-      <Divider />
+        <Divider />
+
       <List sx={styles.messageList}>
         {messages.map((message, index) => (
           <ListItem key={index} sx={styles.messageBubble(message.sender === 'You')}>
@@ -190,6 +308,9 @@ function Chat() {
           </ListItem>
         ))}
       </List>
+
+      <Divider />
+
       <div sx={styles.inputContainer}>
         <TextField
           sx={{
@@ -219,6 +340,7 @@ function Chat() {
           }}
         />
       </div>
+    </Container>
     </Container>
   );
 }
