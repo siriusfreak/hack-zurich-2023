@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io/ioutil"
 	"net/http"
+	"os"
 )
 
 type Message struct {
@@ -55,7 +56,7 @@ func CallAPI(requestBody RequestBody) (*ResponseBody, error) {
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer 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")
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("CHAT_GPT_TOKEN"))
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
