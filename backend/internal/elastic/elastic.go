@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 )
 
 type SearchRequest struct {
@@ -62,7 +63,7 @@ func Search(index string, request SearchRequest) (*SearchResponse, error) {
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Basic ZWxhc3RpYzpRV0UhIzJhc2R6eGM=")
+	req.Header.Set("Authorization", "Basic "+os.Getenv("ELASTIC_SEARCH_TOKEN"))
 
 	resp, err := client.Do(req)
 	if err != nil {
