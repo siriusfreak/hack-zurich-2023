@@ -165,29 +165,6 @@ function Chat() {
   });
   const [activeChatId, setActiveChatId] = useState(null);
 
-  useEffect(() => {
-    const storedChatList = JSON.parse(localStorage.getItem('chatList'));
-    if (storedChatList) {
-      setChatList(storedChatList);
-    } else {
-      setChatList([]);
-      localStorage.setItem('chatList', JSON.stringify([]));
-    }
-  }, []);
-
-  const createNewChat = () => {
-    const newChatId = Math.floor(Math.random() * 1000000);
-    const newChat = { id: newChatId, name: `Chat ${chatList.length + 1}` };
-  
-    setChatList((prevChatList) => {
-      const updatedChatList = [...prevChatList, newChat];
-      localStorage.setItem('chatList', JSON.stringify(updatedChatList));
-      return updatedChatList;
-    });
-  
-    setActiveChatId(newChatId);
-  };
-  
   const handleSend = () => {
     if (inputValue.trim()) {
       const trimmedInput = inputValue.trim();
@@ -279,7 +256,12 @@ function Chat() {
           throw new Error("Network response was not ok " + response.statusText);
         }
         const data = await response.json();
-        setChatList(data.chats);
+        console.log(data)
+        if (data.chats) {
+          setChatList(data.chats);
+        } else {
+          setChatList([]);
+        }
       } catch (error) {
         console.error("Error fetching chats:", error);
       }
@@ -287,7 +269,7 @@ function Chat() {
   
     fetchChats();
   }, []);
-
+  
   return (
     <Container sx={styles.chatLayout}>
         <Box sx={styles.chatListContainer}>
@@ -300,14 +282,14 @@ function Chat() {
 
             <List sx={styles.chatList}>
             {chatList.map((chat) => (
-                <ListItem button key={chat.id} 
+                <ListItem button key={chat.chat_id} 
                 onClick={() => {
-                    setActiveChatId(chat.id);
+                    setActiveChatId(chat.chat_id);
                     setIsNewChat(false);
-                    fetchChatHistory(chat.id);
+                    fetchChatHistory(chat.chat_id);
                     // setMessages([]);
                 }}
-                sx={activeChatId === chat.id ? styles.activeChatItem : styles.unactiveChatItem}>
+                sx={activeChatId === chat.chat_id ? styles.activeChatItem : styles.unactiveChatItem}>
                     <ListItemText primary={chat.name} />
                     <Divider />
                 </ListItem>
@@ -360,11 +342,6 @@ function Chat() {
         <Divider />
 
       <List sx={styles.messageList}>
-        {/* {messages.map((message, index) => (
-          <ListItem key={index} sx={styles.messageBubble(message.sender === 'You')}>
-            <ListItemText primary={message.sender} secondary={message.text} />
-          </ListItem>
-        ))} */}
         {messages.map((message, index) => (
             <ListItem key={index} sx={styles.messageBubble(message.sender === 'You')}>
                 <ListItemText primary={message.sender} secondary={message.text} />
