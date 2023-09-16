@@ -16,11 +16,11 @@ import (
 )
 
 func getChats(c *gin.Context) {
-	chatIDs, err := db.GetChatIDs()
+	chats, err := db.GetChatIDs()
 	if err != nil {
 		c.JSON(500, gin.H{"status": err})
 	} else {
-		c.JSON(http.StatusOK, gin.H{"status": "success", "chatIDs": chatIDs})
+		c.JSON(http.StatusOK, gin.H{"status": "success", "chats": chats})
 	}
 }
 

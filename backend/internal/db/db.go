@@ -37,23 +37,40 @@ func InitDB(dataSourceName string) error {
 	return nil
 }
 
-func GetChatIDs() ([]int, error) {
-	rows, err := DB.Query("SELECT chat_id FROM chat_history GROUP BY chat_id")
+type ChatInfo struct {
+	ChatID int    `json:"chat_id"`
+	Name   string `json:"name"`
+}
+
+func GetChatIDs() ([]ChatInfo, error) {
+	rows, err := DB.Query(`
+        SELECT 
+            ch1.chat_id, 
+            ch2.message AS name 
+        FROM 
+            (SELECT chat_id FROM chat_history GROUP BY chat_id) AS ch1 
+        JOIN 
+            chat_history AS ch2 
+        ON 
+            ch1.chat_id = ch2.chat_id 
+        WHERE 
+            ch2.id IN (SELECT MIN(id) FROM chat_history GROUP BY chat_id)
+    `)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var chatIDs []int
+	var chatInfos []ChatInfo
 	for rows.Next() {
-		var id int
-		if err := rows.Scan(&id); err != nil {
+		var info ChatInfo
+		if err := rows.Scan(&info.ChatID, &info.Name); err != nil {
 			return nil, err
 		}
-		chatIDs = append(chatIDs, id)
+		chatInfos = append(chatInfos, info)
 	}
 
-	return chatIDs, nil
+	return chatInfos, nil
 }
 
 func GetChatMessages(chatID int) ([]ChatMessage, error) {
