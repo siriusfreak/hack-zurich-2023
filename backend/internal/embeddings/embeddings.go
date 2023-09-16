@@ -64,6 +64,14 @@ func MakePredictionRequest(projectID string, request PredictRequest) (*PredictRe
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode != 200 {
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+		return nil, fmt.Errorf("status code %d: %s", resp.StatusCode, string(body))
+	}
+
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
