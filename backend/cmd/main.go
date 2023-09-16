@@ -2,6 +2,10 @@ package main
 
 import (
 	"database/sql"
+	"github.com/siriusfreak/hack-zurich-2023/backend/internal/chatgpt"
+	"github.com/siriusfreak/hack-zurich-2023/backend/internal/elastic"
+	"github.com/siriusfreak/hack-zurich-2023/backend/internal/embeddings"
+	"github.com/siriusfreak/hack-zurich-2023/backend/internal/templater"
 	"log"
 	"net/http"
 	"strconv"
@@ -9,8 +13,6 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	_ "github.com/mattn/go-sqlite3"
-
-	"github.com/siriusfreak/hack-zurich-2023/backend/internal/pallm"
 )
 
 type ChatMessage struct {
@@ -34,6 +36,11 @@ func main() {
 	}
 
 	r := gin.Default()
+
+	tmpl, err := templater.New("backend/config/templates.yaml")
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"*"},
@@ -94,14 +101,66 @@ func main() {
 
 		msg.ChatID, err = strconv.Atoi(chatID)
 		if err != nil {
+			c.JSON(500, gin.H{"status": err})
+			return
+		}
+
+		embed, err := embeddings.MakePredictionRequest("hackzurich23-8200", embeddings.PredictRequest{
+			Instances: []embeddings.Instance{
+				{
+					Text: msg.Message,
+				},
+			},
+		})
+
+		if err != nil {
+			c.JSON(500, gin.H{"status": err})
+			return
+		}
+
+		request := elastic.SearchRequest{}
+		request.KNN.Field = "embedding"
+		request.KNN.QueryVector = embed.Predictions[0].TextEmbedding
+		request.KNN.K = 10
+		request.KNN.NumCandidates = 10
+		request.Size = 10
+
+		searchResp, err := elastic.Search("sika_chat_index", request)
+
+		documents := make([]templater.Document, 0, len(searchResp.Hits.Hits))
+		for _, hit := range searchResp.Hits.Hits {
+			documents = append(documents, templater.Document{
+				Url:     hit.Source.Links[0],
+				Offset:  hit.Source.Offset,
+				Content: hit.Source.Content,
+			})
+		}
+
+		if err != nil {
+			c.JSON(500, gin.H{"status": err})
+		}
+
+		template, err := tmpl.ProcessTemplateInitQuestionData([]templater.InitQuestionData{
+			{
+				Language:  msg.Language,
+				Question:  msg.Message,
+				Documents: documents,
+			},
+		})
+
+		if err != nil {
 			c.JSON(200, gin.H{"status": err})
 			return
 		}
 
-		resp, err := pallm.MakeRequest(msg.Message+"You should answer on language: "+msg.Language, pallm.RequestParameters{
-			MaxOutputTokens: 2000,
-			TopK:            20,
-			TopP:            0.9,
+		resp, err := chatgpt.CallAPI(chatgpt.RequestBody{
+			Model: "gpt-3.5-turbo",
+			Messages: []chatgpt.Message{
+				{
+					Role:    "user",
+					Content: template,
+				},
+			},
 		})
 
 		if err != nil {
@@ -114,12 +173,12 @@ func main() {
 			log.Fatal(err)
 		}
 
-		_, err = db.Exec("INSERT INTO chat_history (chat_id, message, is_bot) VALUES (?, ?, ?)", chatID, resp.Predictions[0].Content, true)
+		_, err = db.Exec("INSERT INTO chat_history (chat_id, message, is_bot) VALUES (?, ?, ?)", chatID, resp.Choices[0].Message.Content, true)
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		c.JSON(200, gin.H{"status": "message added", "response": resp.Predictions[0].Content})
+		c.JSON(200, gin.H{"status": "message added", "response": resp.Choices[0].Message.Content})
 	})
 
 	r.Run()

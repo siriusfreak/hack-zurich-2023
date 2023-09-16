@@ -1,0 +1,11 @@
+initQuestion: |
+  Hello! Please help me! I have the next documents
+  Documents:
+  {{- range .Documents}}
+      - URL: {{.Url}}
+        Offset: {{.Offset}}
+        Content: {{.Content}}
+  {{- end}}
+  My question is: {{.Question}}
+  Please answer me to this question on {{.Language}} language.
+  Please, include links to documents in your answer. 
