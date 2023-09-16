@@ -3,6 +3,7 @@ package chatgpt
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io/ioutil"
 	"net/http"
 )
@@ -64,7 +65,7 @@ func CallAPI(requestBody RequestBody) (*ResponseBody, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, err
+		return nil, errors.New("status code: " + resp.Status)
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
