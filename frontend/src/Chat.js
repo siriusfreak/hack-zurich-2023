@@ -6,6 +6,15 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import Flag from 'react-country-flag';
 import AddIcon from '@mui/icons-material/Add';
 import Fab from '@mui/material/Fab';
+import { marked } from 'marked';
+
+const getAPIAddress = () => {
+  if (process.env['REACT_APP_STAGE'] === 'production') {
+    return 'https://backend.hz.siriusfrk.me';
+  } else {
+    return 'http://localhost:8080';
+  }
+}
 
 const styles = {
   chatContainer: {
@@ -190,10 +199,11 @@ function Chat() {
       setMessages((prevMessages) => [...prevMessages, newMessage]);
       setInputValue('');
   
-      fetch(`http://localhost:8080/chat/${currentChatId}`, {
+      fetch(`${getAPIAddress()}/chat/${currentChatId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': process.env['REACT_APP_AUTH_TOKEN']
         },
         body: JSON.stringify({ message: trimmedInput, language: selectedLanguage }),
       })
@@ -206,7 +216,7 @@ function Chat() {
         })
         .catch((error) => console.error('Error:', error));
   
-      setCurrentUser((prevUser) => (prevUser === 'You' ? 'Assistant' : 'You'));
+      //setCurrentUser((prevUser) => (prevUser === 'You' ? 'Assistant' : 'You'));
     }
   };
   
@@ -237,7 +247,12 @@ function Chat() {
   };
 
   const fetchChatHistory = (chatId) => {
-    fetch(`http://localhost:8080/chat/${chatId}`)
+    fetch(`${getAPIAddress()}/chat/${chatId}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': process.env['REACT_APP_AUTH_TOKEN'],
+        }
+    })
       .then((response) => response.json())
       .then((data) => {
         setMessages(data.map(msg => ({
@@ -251,7 +266,11 @@ function Chat() {
   useEffect(() => {
     const fetchChats = async () => {
       try {
-        const response = await fetch("http://localhost:8080/chat");
+        const response = await fetch(`${getAPIAddress()}/chat`,{
+            headers: {
+          'Content-Type': 'application/json',
+              'Authorization': process.env['REACT_APP_AUTH_TOKEN'],
+        }});
         if (!response.ok) {
           throw new Error("Network response was not ok " + response.statusText);
         }
@@ -354,7 +373,17 @@ function Chat() {
       <List sx={styles.messageList}>
         {messages.map((message, index) => (
             <ListItem key={index} sx={styles.messageBubble(message.sender === 'You')}>
-                <ListItemText primary={message.sender} secondary={message.text} />
+              <ListItemText
+                  primary={message.sender}
+                  secondary={
+                    <span
+                        dangerouslySetInnerHTML={{
+                          __html: marked(message.text),
+                        }}
+                    />
+                  }
+              />
+
             </ListItem>
         ))}
         <div ref={messagesEndRef} />
