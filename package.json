@@ -1,5 +1,6 @@
 {
   "dependencies": {
-    "@mui/icons-material": "^5.14.9"
+    "@mui/icons-material": "^5.14.9",
+    "react-country-flag": "^3.1.0"
   }
 }
