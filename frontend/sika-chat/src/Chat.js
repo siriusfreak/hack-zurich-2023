@@ -208,7 +208,7 @@ function Chat() {
         setActiveChatId(newChatId);
         currentChatId = newChatId;
       }
-      
+
       const newMessage = { text: trimmedInput, sender: currentUser };
       setMessages((prevMessages) => [...prevMessages, newMessage]);
       setInputValue('');
@@ -259,6 +259,18 @@ function Chat() {
     setActiveChatId(null); // Устанавливаем activeChatId в null, указывая что это новый чат
   };
 
+  const fetchChatHistory = (chatId) => {
+    fetch(`http://localhost:8080/chat/${chatId}`)
+      .then((response) => response.json())
+      .then((data) => {
+        setMessages(data.map(msg => ({
+          text: msg.message,
+          sender: msg.is_bot ? 'Assistant' : 'You',
+        })));
+      })
+      .catch((error) => console.error('Error fetching chat history:', error));
+  };
+
   return (
     <Container sx={styles.chatLayout}>
         <Box sx={styles.chatListContainer}>
@@ -275,9 +287,8 @@ function Chat() {
                 onClick={() => {
                     setActiveChatId(chat.id);
                     setIsNewChat(false);
-                    // Fetch chat messages from server or any other storage you're using
-                    // Here, I'm just setting it to an empty array for demonstration
-                    setMessages([]);
+                    fetchChatHistory(chat.id);
+                    // setMessages([]);
                 }}
                 sx={activeChatId === chat.id ? styles.activeChatItem : styles.unactiveChatItem}>
                     <ListItemText primary={chat.name} />
@@ -332,10 +343,15 @@ function Chat() {
         <Divider />
 
       <List sx={styles.messageList}>
-        {messages.map((message, index) => (
+        {/* {messages.map((message, index) => (
           <ListItem key={index} sx={styles.messageBubble(message.sender === 'You')}>
             <ListItemText primary={message.sender} secondary={message.text} />
           </ListItem>
+        ))} */}
+        {messages.map((message, index) => (
+            <ListItem key={index} sx={styles.messageBubble(message.sender === 'You')}>
+                <ListItemText primary={message.sender} secondary={message.text} />
+            </ListItem>
         ))}
       </List>
 
@@ -388,7 +404,7 @@ function getCountryCode(language) {
       case 'chinese':
         return 'CN';
       default:
-        return 'US'; // Используйте код страны по умолчанию, если язык не распознан
+        return 'US';
     }
   }  
 
