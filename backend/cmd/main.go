@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/siriusfreak/hack-zurich-2023/backend/internal/chatgpt"
 	"github.com/siriusfreak/hack-zurich-2023/backend/internal/db"
 	"github.com/siriusfreak/hack-zurich-2023/backend/internal/elastic"
@@ -9,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"sync"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -40,10 +42,10 @@ func getChatById(c *gin.Context) {
 	c.JSON(200, messages)
 }
 
-func postToExistingChat(c *gin.Context, msg db.ChatMessage, messages []db.ChatMessage) {
+func postToExistingChat(c *gin.Context, tmpl *templater.Templater, msg db.ChatMessage, messages []db.ChatMessage) {
 	allMessages := make([]chatgpt.Message, 0, len(messages)+1)
 	for _, m := range messages {
-		role := "bot"
+		role := "assistant"
 		if !m.IsBot {
 			role = "user"
 		}
@@ -57,6 +59,12 @@ func postToExistingChat(c *gin.Context, msg db.ChatMessage, messages []db.ChatMe
 			Content: message,
 		})
 	}
+
+	userMessage, err := tmpl.ProcessTemplateAllQuestionsData(msg.Message, msg.Language)
+	allMessages = append(allMessages, chatgpt.Message{
+		Role:    "user",
+		Content: userMessage,
+	})
 
 	resp, err := chatgpt.CallAPI(chatgpt.RequestBody{
 		Model:    "gpt-3.5-turbo",
@@ -160,7 +168,59 @@ func postToNewChat(c *gin.Context, msg db.ChatMessage, tmpl *templater.Templater
 	}
 
 	c.JSON(200, gin.H{"status": "message added", "response": resp.Choices[0].Message.Content})
+}
 
+func processCorner(tmpl *templater.Templater, cornerName string, msg db.ChatMessage, responses chan string) {
+	question, err := tmpl.GetCornerQuestion(cornerName, msg.Message)
+	if err != nil {
+		fmt.Printf("error getting corner question: %v\n", err)
+		return
+	}
+
+	resp, err := chatgpt.CallAPI(chatgpt.RequestBody{
+		Model: "gpt-3.5-turbo",
+		Messages: []chatgpt.Message{
+			{
+				Role:    "user",
+				Content: question,
+			},
+		},
+	})
+	if err != nil {
+		return
+	}
+
+	if resp.Choices[0].Message.Content == "YES" {
+		cornerResponse, err := tmpl.GetCornerResponse(cornerName)
+		if err != nil {
+			fmt.Printf("error getting corner response: %v\n", err)
+			return
+		}
+		responses <- cornerResponse
+	}
+}
+
+func processCornerCases(c *gin.Context, msg db.ChatMessage, tmpl *templater.Templater) (string, error) {
+	corners := tmpl.GetCornerNames()
+	responses := make(chan string, len(corners))
+	wg := &sync.WaitGroup{}
+	for _, cornerName := range corners {
+		func(cornerName string) {
+			wg.Add(1)
+			processCorner(tmpl, cornerName, msg, responses)
+			wg.Done()
+		}(cornerName)
+	}
+
+	wg.Wait()
+	close(responses)
+
+	res := ""
+	for response := range responses {
+		res += response + "\n"
+	}
+
+	return res, nil
 }
 
 func postToChat(c *gin.Context, tmpl *templater.Templater) {
@@ -185,10 +245,30 @@ func postToChat(c *gin.Context, tmpl *templater.Templater) {
 		return
 	}
 
+	//resp, err := processCornerCases(c, msg, tmpl)
+	//if err != nil {
+	//	return
+	//}
+	//if resp != "" {
+	//	err = db.InsertChatMessage(msg.ChatID, msg.Message, resp, false)
+	//	if err != nil {
+	//		c.JSON(500, gin.H{"status": err})
+	//		return
+	//	}
+	//
+	//	err = db.InsertChatMessage(msg.ChatID, msg.Message, resp, true)
+	//	if err != nil {
+	//		c.JSON(500, gin.H{"status": err})
+	//		return
+	//	}
+	//	c.JSON(200, gin.H{"status": "message added", "response": resp})
+	//	return
+	//}
+
 	if len(chatMessages) == 0 {
 		postToNewChat(c, msg, tmpl)
 	} else {
-		postToExistingChat(c, msg, chatMessages)
+		postToExistingChat(c, tmpl, msg, chatMessages)
 	}
 
 }
