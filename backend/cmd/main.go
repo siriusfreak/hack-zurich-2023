@@ -13,10 +13,11 @@ import (
 )
 
 type ChatMessage struct {
-	ID      int    `json:"id"`
-	ChatID  int    `json:"chat_id"`
-	Message string `json:"message"`
-	IsBot   bool   `json:"is_bot"`
+	ID       int    `json:"id"`
+	ChatID   int    `json:"chat_id"`
+	Message  string `json:"message"`
+	IsBot    bool   `json:"is_bot"`
+	Language string `json:"language"`
 }
 
 func main() {
@@ -75,7 +76,7 @@ func main() {
 			return
 		}
 
-		resp, err := pallm.MakeRequest(msg.Message, pallm.RequestParameters{
+		resp, err := pallm.MakeRequest(msg.Message+"You should answer on language: "+msg.Language, pallm.RequestParameters{
 			MaxOutputTokens: 2000,
 			TopK:            20,
 			TopP:            0.9,
