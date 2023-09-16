@@ -126,6 +126,7 @@ const styles = {
     maxHeight: 'calc(100vh - 120px)',
     color: 'white',
     backgroundColor: '#616161',
+    borderRadius: '10px',
   },
   chatWindow: {
     flexGrow: 1,
@@ -156,12 +157,11 @@ function Chat() {
   const [currentUser, setCurrentUser] = useState('You');
   const [selectedLanguage, setSelectedLanguage] = useState('english');
   const [languageAnchorEl, setLanguageAnchorEl] = useState(null);
+  const [isNewChat, setIsNewChat] = useState(false);
 
   const [chatList, setChatList] = useState(() => {
     const savedChatList = localStorage.getItem('chatList');
-    return savedChatList ? JSON.parse(savedChatList) : [
-      { id: 1, name: 'Chat 1' },
-    ];
+    return savedChatList ? JSON.parse(savedChatList) : [];
   });
   const [activeChatId, setActiveChatId] = useState(null);
 
@@ -170,26 +170,55 @@ function Chat() {
     if (storedChatList) {
       setChatList(storedChatList);
     } else {
-      const initialChatList = [
-        { id: 1, name: 'Chat 1' },
-      ];
-      setChatList(initialChatList);
-      localStorage.setItem('chatList', JSON.stringify(initialChatList));
+      setChatList([]);
+      localStorage.setItem('chatList', JSON.stringify([]));
     }
   }, []);
 
+  const createNewChat = () => {
+    const newChatId = Math.floor(Math.random() * 1000000);
+    const newChat = { id: newChatId, name: `Chat ${chatList.length + 1}` };
+  
+    setChatList((prevChatList) => {
+      const updatedChatList = [...prevChatList, newChat];
+      localStorage.setItem('chatList', JSON.stringify(updatedChatList));
+      return updatedChatList;
+    });
+  
+    setActiveChatId(newChatId);
+  };
+  
   const handleSend = () => {
     if (inputValue.trim()) {
-      const newMessage = { text: inputValue, sender: currentUser };
+      const trimmedInput = inputValue.trim();
+  
+      let currentChatId = activeChatId;
+  
+      if (activeChatId === null) {
+        const newChatId = Math.floor(Math.random() * 1000000);
+        const newChatName = trimmedInput.length > 15 ? `${trimmedInput.substring(0, 15)}...` : trimmedInput;
+        const newChat = { id: newChatId, name: newChatName };
+  
+        setChatList((prevChatList) => {
+          const updatedChatList = [...prevChatList, newChat];
+          localStorage.setItem('chatList', JSON.stringify(updatedChatList));
+          return updatedChatList;
+        });
+        
+        setActiveChatId(newChatId);
+        currentChatId = newChatId;
+      }
+      
+      const newMessage = { text: trimmedInput, sender: currentUser };
       setMessages((prevMessages) => [...prevMessages, newMessage]);
       setInputValue('');
-
-      fetch(`http://localhost:8080/chat/${activeChatId}`, {
+  
+      fetch(`http://localhost:8080/chat/${currentChatId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ message: inputValue, language: selectedLanguage }),
+        body: JSON.stringify({ message: trimmedInput, language: selectedLanguage }),
       })
         .then((response) => response.json())
         .then((data) => {
@@ -199,11 +228,12 @@ function Chat() {
           ]);
         })
         .catch((error) => console.error('Error:', error));
-
+  
       setCurrentUser((prevUser) => (prevUser === 'You' ? 'Assistant' : 'You'));
     }
   };
-
+  
+  
   const handleKeyPress = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -225,14 +255,8 @@ function Chat() {
   };
 
   const handleNewChat = () => {
-    const newChatId = Math.floor(Math.random() * 1000000);
-    const newChat = { id: newChatId, name: `Chat ${chatList.length + 1}` };
-
-    setChatList((prevChatList) => {
-        const updatedChatList = [...prevChatList, newChat];
-        localStorage.setItem('chatList', JSON.stringify(updatedChatList));
-        return updatedChatList;
-      });
+    setMessages([]); // Очищаем историю сообщений
+    setActiveChatId(null); // Устанавливаем activeChatId в null, указывая что это новый чат
   };
 
   return (
@@ -248,7 +272,13 @@ function Chat() {
             <List sx={styles.chatList}>
             {chatList.map((chat) => (
                 <ListItem button key={chat.id} 
-                onClick={() => setActiveChatId(chat.id)}
+                onClick={() => {
+                    setActiveChatId(chat.id);
+                    setIsNewChat(false);
+                    // Fetch chat messages from server or any other storage you're using
+                    // Here, I'm just setting it to an empty array for demonstration
+                    setMessages([]);
+                }}
                 sx={activeChatId === chat.id ? styles.activeChatItem : styles.unactiveChatItem}>
                     <ListItemText primary={chat.name} />
                     <Divider />
