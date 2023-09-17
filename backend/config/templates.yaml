@@ -1,0 +1,109 @@
+initQuestion: |
+  You must make answer to my next request: {{.Question}}
+  Analyze the document, its content, and links.
+  Please answer this question in {{.Language}} language.
+  You must include the URL of the documents and links that you use to this answer.
+  
+  Documents:
+  {{- range .Documents}}
+  <Start document with URL: {{.Url}}>
+  {{.Content}}
+  <End document with URL: {{.Url}}>
+  {{- end}}
+  
+  Also I have the next links:
+    Information about stock count and stores 
+    on our website here: https://mys.sika.com/en/home-improvement/where-to-buy.html
+    Request quotation here: https://mys.sika.com/en/Contact.html
+    Find career or job information here: https://mys.sika.com/en/about-us/career.html
+    Request to be distributor / dealer here: https://mys.sika.com/en/Contact/distribution.html
+    Request training here: https://mys.sika.com/en/webinar/request-form.html
+    Request supply here: https://mys.sika.com/en/Contact.html#a525806318
+  You must include the URL only if it will be usefully for answer
+  
+
+
+allQuestions: |
+  You must make answer to my next request:  {{.Question}}
+  You must answer in {{.Language}} language.
+  
+  You must include the URL of the documents and links that you use to this answer.
+  Documents:
+  {{- range .Documents}}
+  <Start document with URL: {{.Url}}>
+  {{.Content}}
+  <End document with URL: {{.Url}}>
+  {{- end}}
+  
+    I could find information about stock count and stores
+    on our website here: https://mys.sika.com/en/home-improvement/where-to-buy.html
+    I could request quotation here: https://mys.sika.com/en/Contact.html
+    I could find career or job information here: https://mys.sika.com/en/about-us/career.html
+    I could request to be distributor / dealer here: https://mys.sika.com/en/Contact/distribution.html
+    I could request training here: https://mys.sika.com/en/webinar/request-form.html
+    I could request supply here: https://mys.sika.com/en/Contact.html#a525806318
+  You must include the URL only if it will be usefully for answer
+
+corners:
+  - name: AddressRequest
+    question: |
+      If there is an ask about where he can buy or get or order something 
+      location in the question below? 
+      You must answer YES if true and NO otherwise.
+      
+      <beginning of question>
+      "{{.Question}}"
+      </end of question>
+    answer: |
+      You could find information about stock count and stores 
+      on our website: https://mys.sika.com/en/home-improvement/where-to-buy.html
+  - name: PriceOrQuotation
+    question: |
+      If there is an ask about for quotation / price in the question below? 
+      You must answer YES if true and NO otherwise.
+      
+      <beginning of question>
+      "{{.Question}}"
+      </end of question>
+    answer: |
+      Please, contact as at  https://mys.sika.com/en/Contact.html
+  - name: Job
+    question: |
+      If there is an ask about job in the question below? 
+      You must answer YES if true and NO otherwise.
+      
+      <beginning of question>
+      "{{.Question}}"
+      </end of question>
+    answer: |
+      Please, contact as at https://mys.sika.com/en/about-us/career.html
+  - name: Dealer
+    question: |
+      If there is an ask about to be distributor / dealer in the question below? 
+      You must answer YES if true and NO otherwise.
+      
+      <beginning of question>
+      "{{.Question}}"
+      </end of question>
+    answer: |
+      Please, contact as at https://mys.sika.com/en/Contact/distribution.html
+  - name: Training
+    question: |
+        If there is an ask about training in the question below? 
+        You must answer YES if true and NO otherwise.
+        
+        <beginning of question>
+        "{{.Question}}"
+        </end of question>
+    answer: |
+        Please, contact as at https://mys.sika.com/en/webinar/request-form.html
+  - name: Supply
+    question: |
+      If there is an ask about supply in the question below? 
+      You must answer YES if true and NO otherwise.
+      
+      <beginning of question>
+      "{{.Question}}"
+      </end of question>
+    answer: |
+      Please, contact as at https://mys.sika.com/en/Contact.html#a525806318
